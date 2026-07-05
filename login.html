@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — FlowChat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700&family=Source+Serif+4:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/tokens.css">
+<style>
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--foreground) 4%, transparent), transparent 60%);
+    pointer-events: none;
+  }
+
+  .back-link {
+    position: fixed; top: 24px; left: 24px;
+    font-size: 13px; color: var(--muted-foreground);
+    display: flex; align-items: center; gap: 6px;
+    text-decoration: none;
+  }
+  .back-link:hover { color: var(--foreground); }
+
+  .auth-card {
+    width: 100%; max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 6px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+    padding: 36px 32px;
+  }
+  .auth-logo {
+    font-family: 'Source Serif 4', serif;
+    font-size: 18px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+    justify-content: center;
+    margin-bottom: 28px;
+  }
+  .auth-logo .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--foreground); }
+
+  .auth-title { font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 6px; }
+  .auth-sub { font-size: 13px; color: var(--muted-foreground); text-align: center; margin-bottom: 26px; }
+
+  .tabs {
+    display: flex;
+    background: var(--muted);
+    border-radius: calc(var(--radius) - 2px);
+    padding: 3px;
+    margin-bottom: 24px;
+  }
+  .tab {
+    flex: 1; text-align: center;
+    padding: 7px 0;
+    font-size: 13px; font-weight: 500;
+    color: var(--muted-foreground);
+    border-radius: calc(var(--radius) - 4px);
+    cursor: pointer;
+    transition: .15s;
+  }
+  .tab.active { background: var(--card); color: var(--foreground); box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12.5px; font-weight: 500; margin-bottom: 6px; color: var(--foreground); }
+  .field input {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--background);
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .field input:focus { border-color: var(--ring); }
+
+  .btn {
+    width: 100%;
+    padding: 11px 0;
+    border-radius: calc(var(--radius) - 2px);
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13.5px;
+    font-family: inherit;
+    transition: .15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); margin-top: 6px; }
+  .btn-primary:hover { opacity: .88; }
+  .btn-primary:disabled { opacity: .5; cursor: default; }
+  .btn-outline { background: var(--background); color: var(--foreground); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--accent); }
+
+  .divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: var(--muted-foreground); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .forgot-link { display: block; text-align: right; font-size: 12px; color: var(--muted-foreground); margin: -4px 0 16px; cursor: pointer; }
+  .forgot-link:hover { color: var(--foreground); }
+
+  .msg {
+    font-size: 12.5px;
+    padding: 9px 12px;
+    border-radius: calc(var(--radius) - 4px);
+    margin-bottom: 14px;
+    display: none;
+  }
+  .msg.show { display: block; }
+  .msg.error { background: color-mix(in oklab, var(--destructive) 12%, transparent); color: var(--destructive); }
+  .msg.success { background: color-mix(in oklab, var(--color-green-500) 14%, transparent); color: color-mix(in oklab, var(--color-green-500) 70%, var(--foreground)); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid color-mix(in oklab, var(--primary-foreground) 30%, transparent);
+    border-top-color: var(--primary-foreground);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="back-link">← Back to home</a>
+
+<div class="auth-card">
+  <div class="auth-logo"><span class="dot"></span>FlowChat</div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="login" onclick="switchTab('login')">Log in</div>
+    <div class="tab" data-tab="register" onclick="switchTab('register')">Sign up</div>
+  </div>
+
+  <div id="msg-box" class="msg"></div>
+
+  <!-- LOGIN PANEL -->
+  <div class="panel active" id="panel-login">
+    <form id="login-form" onsubmit="return false;">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <span class="forgot-link" onclick="handleForgotPassword()">Forgot password?</span>
+      <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">Log in</button>
+    </form>
+  </div>
+
+  <!-- REGISTER PANEL -->
+  <div class="panel" id="panel-register">
+    <form id="register-form" onsubmit="return false;">
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="reg-name" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="reg-email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="reg-password" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button class="btn btn-primary" id="register-btn" onclick="handleRegister()">Create account</button>
+    </form>
+  </div>
+
+  <div class="divider">or continue with</div>
+
+  <button class="btn btn-outline" id="google-btn" onclick="handleGoogleLogin()" style="gap:10px;">
+    <svg width="16" height="16" viewBox="0 0 48 48">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+      <path fill="#4CAF50" d="M24 44c5.2 0 10.1-2 13.7-5.2l-6.3-5.3C29.3 35.4 26.8 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39.6 16.3 44 24 44z"/>
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.3 5.3C39.9 36.5 44 31 44 24c0-1.3-.1-2.7-.4-3.5z"/>
+    </svg>
+    Continue with Google
+  </button>
+</div>
+
+<script type="module">
+  import { supabase } from "./supabase-client.js";
+
+  // ── Tab switching ──────────────────────────────────────────────
+  window.switchTab = function(tab) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document.getElementById("panel-" + tab).classList.add("active");
+    hideMsg();
+  };
+  if (location.hash === "#register") switchTab("register");
+
+  // ── Message helper ────────────────────────────────────────────
+  function showMsg(text, type) {
+    const box = document.getElementById("msg-box");
+    box.textContent = text;
+    box.className = "msg show " + type;
+  }
+  function hideMsg() {
+    document.getElementById("msg-box").classList.remove("show");
+  }
+
+  function setLoading(btnId, loading, label) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.innerHTML = loading ? `<span class="spinner"></span>` : label;
+  }
+
+  // ── Redirect if already logged in ───────────────────────────────
+  // onAuthStateChanged-equivalent: getSession() resolves from local
+  // storage almost instantly, so there's no flash-then-bounce issue
+  // like the old Firebase version had.
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) location.href = "chat.html";
+  });
+
+  // ── Google login ──────────────────────────────────────────────
+  window.handleGoogleLogin = async function() {
+    hideMsg();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        // Send the user straight back to the chat screen after Google
+        // redirects back to us — Supabase appends the session tokens
+        // to this URL automatically.
+        redirectTo: location.origin + location.pathname.replace("login.html", "chat.html")
+      }
+    });
+    if (error) showMsg(error.message, "error");
+    // No need to redirect manually on success — signInWithOAuth navigates
+    // the whole page to Google, then back to redirectTo once approved.
+  };
+
+  // ── Login ────────────────────────────────────────────────────────
+  window.handleLogin = async function() {
+    hideMsg();
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    if (!email || !password) { showMsg("Enter your email and password.", "error"); return; }
+
+    setLoading("login-btn", true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading("login-btn", false, "Log in");
+
+    if (error) { showMsg(error.message, "error"); return; }
+    location.href = "chat.html";
+  };
+
+  // ── Register ─────────────────────────────────────────────────────
+  window.handleRegister = async function() {
+    hideMsg();
+    const name = document.getElementById("reg-name").value.trim();
+    const email = document.getElementById("reg-email").value.trim();
+    const password = document.getElementById("reg-password").value;
+    if (!name || !email || !password) { showMsg("Fill in all fields.", "error"); return; }
+    if (password.length < 6) { showMsg("Password must be at least 6 characters.", "error"); return; }
+
+    setLoading("register-btn", true);
+    // `name` goes into raw_user_meta_data — the handle_new_user() trigger
+    // in supabase-schema.sql reads it to populate profiles.name.
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { name } }
+    });
+    setLoading("register-btn", false, "Create account");
+
+    if (error) { showMsg(error.message, "error"); return; }
+
+    // If email confirmation is required (default Supabase setting),
+    // there's no session yet — tell the user to check their inbox.
+    if (!data.session) {
+      showMsg("Account created! Check your email to confirm, then log in.", "success");
+      switchTab("login");
+      return;
+    }
+    location.href = "chat.html";
+  };
+
+  // ── Forgot password ──────────────────────────────────────────────
+  window.handleForgotPassword = async function() {
+    hideMsg();
+    const email = document.getElementById("login-email").value.trim();
+    if (!email) { showMsg("Enter your email above first, then click 'Forgot password?'", "error"); return; }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: location.origin + location.pathname.replace("login.html", "chat.html")
+    });
+    if (error) { showMsg(error.message, "error"); return; }
+    showMsg("Password reset email sent — check your inbox.", "success");
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowChat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700&family=Source+Serif+4:ital,wght@0,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/tokens.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: 'Inter', sans-serif; }
+
+  #app {
+    display: flex;
+    height: 100vh;
+    --sb-w: 340px;
+  }
+
+  /* ════════════════ SIDEBAR ════════════════ */
+  #sidebar {
+    width: var(--sb-w);
+    flex-shrink: 0;
+    background: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sb-header {
+    padding: 16px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+  .sb-logo {
+    font-family: 'Source Serif 4', serif;
+    font-size: 16.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sb-logo .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--foreground); }
+  .sb-actions { display: flex; gap: 4px; }
+
+  .icon-btn {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: calc(var(--radius) - 4px);
+    background: transparent; border: none; cursor: pointer;
+    color: var(--muted-foreground);
+    transition: .15s;
+  }
+  .icon-btn:hover { background: var(--accent); color: var(--foreground); }
+  .icon-btn svg { width: 17px; height: 17px; }
+
+  .sb-search {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+  .sb-search input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--muted);
+    border: 1px solid transparent;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 13px;
+    outline: none;
+  }
+  .sb-search input:focus { border-color: var(--ring); }
+
+  .sb-tabs { display: flex; gap: 4px; padding: 8px 14px; border-bottom: 1px solid var(--sidebar-border); }
+  .sb-tab {
+    padding: 5px 12px;
+    font-size: 12px; font-weight: 500;
+    color: var(--muted-foreground);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: .15s;
+  }
+  .sb-tab.active { background: var(--secondary); color: var(--secondary-foreground); }
+  .sb-tab:hover:not(.active) { color: var(--foreground); }
+
+  .sb-list { flex: 1; overflow-y: auto; padding: 6px; }
+  .sb-empty { padding: 40px 20px; text-align: center; color: var(--muted-foreground); font-size: 13px; }
+
+  .chat-item {
+    display: flex; align-items: center; gap: 11px;
+    padding: 10px;
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    transition: background .12s;
+    position: relative;
+  }
+  .chat-item:hover { background: var(--sidebar-accent); }
+  .chat-item.active { background: var(--sidebar-accent); }
+
+  .avatar {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar .presence {
+    position: absolute; bottom: -1px; right: -1px;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 2px solid var(--sidebar);
+  }
+
+  .chat-item-body { flex: 1; min-width: 0; }
+  .chat-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+  .chat-item-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-item-time { font-size: 11px; color: var(--muted-foreground); flex-shrink: 0; }
+  .chat-item-preview { font-size: 12.5px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+  .unread-badge {
+    background: var(--primary); color: var(--primary-foreground);
+    font-size: 10.5px; font-weight: 600;
+    min-width: 18px; height: 18px;
+    border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 5px;
+    flex-shrink: 0;
+  }
+
+  .sb-footer {
+    padding: 10px 14px;
+    border-top: 1px solid var(--sidebar-border);
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+  }
+  .sb-footer:hover { background: var(--sidebar-accent); }
+  .sb-footer .avatar { width: 34px; height: 34px; font-size: 12px; }
+  .sb-footer-name { font-size: 13px; font-weight: 600; }
+  .sb-footer-email { font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+
+  /* ════════════════ CHAT PANEL ════════════════ */
+  #chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--background);
+  }
+  #empty-state {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--muted-foreground);
+    gap: 10px;
+    text-align: center;
+    padding: 20px;
+  }
+  #empty-state svg { width: 40px; height: 40px; opacity: .3; margin-bottom: 6px; }
+  #empty-state .t1 { font-size: 14.5px; font-weight: 500; color: var(--foreground); }
+  #empty-state .t2 { font-size: 12.5px; }
+
+  #chat-view { flex: 1; display: none; flex-direction: column; min-height: 0; }
+  #chat-view.show { display: flex; }
+
+  .ch-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .ch-back { display: none; }
+  .ch-header-info { flex: 1; min-width: 0; cursor: pointer; }
+  .ch-header-name { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ch-header-status { font-size: 12px; color: var(--muted-foreground); }
+  .ch-header-actions { display: flex; gap: 2px; }
+
+  .messages {
+    flex: 1; overflow-y: auto;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .day-divider {
+    text-align: center; margin: 14px 0 10px;
+    font-size: 11px; color: var(--muted-foreground);
+    font-weight: 500;
+  }
+
+  .msg-row { display: flex; gap: 8px; max-width: 72%; margin-bottom: 2px; }
+  .msg-row.own { align-self: flex-end; flex-direction: row-reverse; }
+  .msg-row .avatar { width: 26px; height: 26px; font-size: 10px; align-self: flex-end; margin-bottom: 2px; }
+  .msg-row.own .avatar { display: none; }
+  .msg-row.grouped .avatar { visibility: hidden; }
+
+  .bubble-wrap { display: flex; flex-direction: column; gap: 3px; }
+  .msg-sender { font-size: 11.5px; font-weight: 600; color: var(--muted-foreground); margin-left: 2px; }
+
+  .bubble {
+    padding: 8px 12px;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 13.8px;
+    line-height: 1.5;
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    border-bottom-left-radius: 4px;
+    word-wrap: break-word;
+    position: relative;
+  }
+  .msg-row.own .bubble { background: var(--primary); color: var(--primary-foreground); border-bottom-left-radius: calc(var(--radius) - 2px); border-bottom-right-radius: 4px; }
+
+  .msg-meta { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 10.5px; color: var(--muted-foreground); }
+  .msg-row.own .msg-meta { justify-content: flex-end; }
+  .msg-edited { font-style: italic; }
+
+  .reply-quote {
+    border-left: 2px solid color-mix(in oklab, currentColor 35%, transparent);
+    padding: 3px 8px;
+    margin-bottom: 5px;
+    font-size: 12px;
+    opacity: .8;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .rq-name { font-weight: 600; }
+
+  .msg-img { max-width: 240px; max-height: 200px; border-radius: calc(var(--radius) - 4px); cursor: pointer; object-fit: cover; }
+  .msg-video { max-width: 280px; max-height: 240px; border-radius: calc(var(--radius) - 4px); background: #000; }
+  .msg-audio { display: flex; align-items: center; gap: 8px; min-width: 220px; }
+  .msg-audio-el { height: 34px; max-width: 220px; }
+  .msg-file { display: flex; align-items: center; gap: 9px; padding: 7px 11px; border-radius: calc(var(--radius) - 4px); background: color-mix(in oklab, currentColor 8%, transparent); text-decoration: none; color: inherit; }
+  .msg-file-name { font-size: 12.5px; font-weight: 600; }
+  .msg-file-size { font-size: 10.5px; opacity: .65; }
+
+  .typing-row { display: flex; align-items: center; gap: 6px; padding: 4px 0 4px 34px; }
+  .typing-dots { display: flex; gap: 3px; padding: 8px 12px; background: var(--secondary); border-radius: calc(var(--radius) - 2px); border-bottom-left-radius: 4px; width: fit-content; }
+  .typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--muted-foreground); animation: bounce 1.2s infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: .15s; }
+  .typing-dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-3px); opacity: 1; } }
+
+  /* Reply preview bar above input */
+  #reply-bar {
+    display: none;
+    align-items: center; gap: 10px;
+    padding: 8px 16px;
+    background: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+  #reply-bar.show { display: flex; }
+  #reply-bar .rb-content { flex: 1; min-width: 0; font-size: 12.5px; }
+  #reply-bar .rb-name { font-weight: 600; }
+  #reply-bar .rb-text { color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  #upload-progress { padding: 8px 16px 0; }
+  .up-info { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted-foreground); margin-bottom: 4px; }
+  .up-info span:first-child { max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .up-track { width: 100%; height: 4px; border-radius: 999px; background: var(--accent); overflow: hidden; }
+  .up-fill { height: 100%; background: var(--primary); border-radius: 999px; transition: width .15s; width: 0%; }
+
+  #input-area { display: none; flex-direction: column; border-top: 1px solid var(--border); flex-shrink: 0; }
+  #input-area.show { display: flex; }
+  .input-row { display: flex; align-items: flex-end; gap: 8px; padding: 12px 14px; }
+  #msg-input {
+    flex: 1;
+    border: 1px solid var(--input);
+    background: var(--muted);
+    border-radius: calc(var(--radius) + 6px);
+    padding: 9px 16px;
+    font-size: 13.8px;
+    font-family: inherit;
+    resize: none;
+    max-height: 120px;
+    outline: none;
+    line-height: 1.4;
+  }
+  #msg-input:focus { border-color: var(--ring); }
+  .send-btn {
+    width: 38px; height: 38px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary); color: var(--primary-foreground);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: .15s;
+  }
+  .send-btn:hover { opacity: .88; }
+  .send-btn svg { width: 16px; height: 16px; }
+
+  /* ════════════════ MODALS ════════════════ */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 200;
+    background: color-mix(in oklab, var(--background) 40%, transparent);
+    backdrop-filter: blur(2px);
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--popover); color: var(--popover-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / .15);
+    width: 100%; max-width: 400px;
+    max-height: 85vh;
+    display: flex; flex-direction: column;
+  }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .modal-title { font-size: 15px; font-weight: 600; }
+  .modal-body { padding: 16px 18px; overflow-y: auto; }
+  .modal-footer { padding: 14px 18px; border-top: 1px solid var(--border); }
+
+  .field { margin-bottom: 13px; }
+  .field label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 5px; }
+  .field input, .field textarea {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--input); background: var(--background);
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 13px; font-family: inherit; outline: none;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--ring); }
+
+  .btn { padding: 9px 16px; border-radius: calc(var(--radius) - 2px); border: none; cursor: pointer; font-weight: 500; font-size: 13px; font-family: inherit; transition: .15s; }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); width: 100%; }
+  .btn-primary:hover { opacity: .88; }
+  .btn-danger { background: color-mix(in oklab, var(--destructive) 12%, transparent); color: var(--destructive); width: 100%; }
+  .btn-danger:hover { background: color-mix(in oklab, var(--destructive) 18%, transparent); }
+
+  .user-result { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: calc(var(--radius) - 4px); cursor: pointer; }
+  .user-result:hover { background: var(--accent); }
+  .user-result-name { font-size: 13px; font-weight: 600; }
+  .user-result-email { font-size: 11.5px; color: var(--muted-foreground); }
+
+  .gi-action-btn {
+    width: 27px; height: 27px; border-radius: calc(var(--radius) - 4px);
+    border: 1px solid var(--border); background: transparent; color: var(--foreground);
+    font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background .1s;
+  }
+  .gi-action-btn:hover { background: var(--accent); }
+  .gi-action-danger { color: var(--destructive); border-color: color-mix(in oklab, var(--destructive) 30%, transparent); }
+  .gi-action-danger:hover { background: color-mix(in oklab, var(--destructive) 12%, transparent); }
+
+  .checkbox-row { display: flex; align-items: center; gap: 9px; padding: 8px; }
+
+  .lightbox { display: none; position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.9); align-items: center; justify-content: center; padding: 24px; }
+  .lightbox.show { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 4px; }
+  .lightbox-close { position: fixed; top: 20px; right: 24px; color: #fff; cursor: pointer; font-size: 28px; }
+
+  .toast-stack { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 400; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast { background: var(--primary); color: var(--primary-foreground); padding: 9px 16px; border-radius: calc(var(--radius) - 2px); font-size: 12.5px; font-weight: 500; box-shadow: 0 4px 12px rgb(0 0 0 / .15); animation: toast-in .2s ease; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .context-menu { display: none; position: fixed; z-index: 250; background: var(--popover); border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); box-shadow: 0 8px 20px rgb(0 0 0 / .12); padding: 4px; min-width: 150px; }
+  .context-menu.show { display: block; }
+  .cm-item { padding: 7px 10px; font-size: 13px; border-radius: calc(var(--radius) - 4px); cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .cm-item:hover { background: var(--accent); }
+  .cm-item.danger { color: var(--destructive); }
+
+  /* Settings panel (slide-in) */
+  #settings-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 150;
+    width: 340px; max-width: 90vw;
+    background: var(--popover);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform .25s ease;
+    display: flex; flex-direction: column;
+  }
+  #settings-panel.open { transform: translateX(0); }
+  .settings-overlay { display: none; position: fixed; inset: 0; z-index: 149; background: rgba(0,0,0,.3); }
+  .settings-overlay.show { display: block; }
+
+  .theme-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
+  .switch { position: relative; width: 40px; height: 22px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch-track { position: absolute; inset: 0; background: var(--muted); border-radius: 999px; cursor: pointer; transition: .2s; }
+  .switch-track::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--background); border-radius: 50%; transition: .2s; box-shadow: 0 1px 2px rgb(0 0 0 / .15); }
+  .switch input:checked + .switch-track { background: var(--primary); }
+  .switch input:checked + .switch-track::before { transform: translateX(18px); }
+
+  /* ════════════════ MOBILE ════════════════ */
+  @media (max-width: 768px) {
+    :root { --sb-w: 100vw; }
+    #sidebar { position: fixed; inset: 0; z-index: 50; transition: transform .3s; }
+    #sidebar.hidden { transform: translateX(-100%); }
+    #chat { position: fixed; inset: 0; z-index: 50; transform: translateX(100%); transition: transform .3s; }
+    #chat.visible { transform: translateX(0); }
+    .ch-back { display: flex !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <div id="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo"><span class="dot"></span>FlowChat</div>
+      <div class="sb-actions">
+        <button class="icon-btn" title="New direct message" onclick="openModal('new-dm-modal')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button class="icon-btn" title="New group" onclick="openModal('new-group-modal')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </button>
+        <button class="icon-btn" title="Settings" onclick="openSettings()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="sb-search">
+      <input type="text" id="search-input" placeholder="Search…" oninput="filterChats(this.value)">
+    </div>
+
+    <div class="sb-tabs">
+      <div class="sb-tab active" data-tab="all" onclick="switchChatTab('all', this)">All</div>
+      <div class="sb-tab" data-tab="dm" onclick="switchChatTab('dm', this)">Direct</div>
+      <div class="sb-tab" data-tab="group" onclick="switchChatTab('group', this)">Groups</div>
+    </div>
+
+    <div class="sb-list" id="chat-list">
+      <div class="sb-empty">Loading…</div>
+    </div>
+
+    <div class="sb-footer" onclick="openSettings()">
+      <div class="avatar" id="my-avatar">…</div>
+      <div style="flex:1; min-width:0;">
+        <div class="sb-footer-name" id="my-name">…</div>
+        <div class="sb-footer-email" id="my-email">…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CHAT PANEL ═══ -->
+  <div id="chat">
+    <div id="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <div class="t1">Select a conversation</div>
+      <div class="t2">Choose a chat from the sidebar, or start a new one.</div>
+    </div>
+
+    <div id="chat-view">
+      <div class="ch-header">
+        <button class="icon-btn ch-back" onclick="backToList()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="avatar" id="ch-avatar">…</div>
+        <div class="ch-header-info" onclick="headerInfoClick()">
+          <div class="ch-header-name" id="ch-name">…</div>
+          <div class="ch-header-status" id="ch-status"></div>
+        </div>
+        <div class="ch-header-actions">
+          <button class="icon-btn" title="More" onclick="openChatOptions()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div id="reply-bar">
+        <div class="rb-content">
+          <div class="rb-name" id="rb-name"></div>
+          <div class="rb-text" id="rb-text"></div>
+        </div>
+        <button class="icon-btn" onclick="cancelReply()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="input-area">
+        <div class="input-row">
+          <button class="icon-btn" onclick="document.getElementById('file-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <input type="file" id="file-input" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.txt" style="display:none" onchange="handleFileSelect(this)">
+          <textarea id="msg-input" placeholder="Type a message…" rows="1" onkeydown="handleInputKeydown(event)" oninput="handleInputChange(this)"></textarea>
+          <button class="send-btn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS PANEL ═══ -->
+<div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+<div id="settings-panel">
+  <div class="modal-header">
+    <div class="modal-title">Settings</div>
+    <button class="icon-btn" onclick="closeSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="modal-body" style="flex:1;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+      <div class="avatar" id="settings-avatar" style="width:52px;height:52px;font-size:18px;">…</div>
+      <div>
+        <div style="font-weight:600; font-size:14.5px;" id="settings-name">…</div>
+        <div style="font-size:12px; color:var(--muted-foreground);" id="settings-email">…</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Display name</label>
+      <input type="text" id="settings-name-input">
+    </div>
+    <button class="btn btn-primary" onclick="saveProfile()" style="margin-bottom:20px;">Save changes</button>
+
+    <div class="theme-toggle-row">
+      <div>
+        <div style="font-size:13.5px; font-weight:500;">Dark mode</div>
+        <div style="font-size:11.5px; color:var(--muted-foreground);">Toggle the app theme</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="theme-toggle" onchange="toggleTheme(this.checked)">
+        <span class="switch-track"></span>
+      </label>
+    </div>
+
+    <div class="theme-toggle-row" style="border-top: 1px solid var(--border);">
+      <div>
+        <div style="font-size:13.5px; font-weight:500;">Push notifications</div>
+        <div style="font-size:11.5px; color:var(--muted-foreground);">Get notified of new messages, even when this tab is closed</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="push-toggle" onchange="togglePushNotifications(this.checked)">
+        <span class="switch-track"></span>
+      </label>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-danger" onclick="handleLogout()">Log out</button>
+  </div>
+</div>
+
+<!-- ═══ NEW DM MODAL ═══ -->
+<div class="modal-overlay" id="new-dm-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">New message</div>
+      <button class="icon-btn" onclick="closeModal('new-dm-modal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="margin-bottom:10px;">
+        <input type="text" id="dm-search-input" placeholder="Search by name or email…" oninput="searchUsers(this.value)">
+      </div>
+      <div id="dm-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NEW GROUP MODAL ═══ -->
+<div class="modal-overlay" id="new-group-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">New group</div>
+      <button class="icon-btn" onclick="closeModal('new-group-modal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Group name</label>
+        <input type="text" id="group-name-input" placeholder="e.g. Weekend Trip">
+      </div>
+      <div class="field">
+        <label>Add members</label>
+        <input type="text" id="group-search-input" placeholder="Search by name or email…" oninput="searchUsersForGroup(this.value)">
+      </div>
+      <div id="group-selected" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
+      <div id="group-results"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="createGroup()">Create group</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GROUP INFO MODAL ═══ -->
+<div class="modal-overlay" id="group-info-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="gi-name">Group</div>
+      <button class="icon-btn" onclick="closeModal('group-info-modal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field" id="gi-rename-field" style="display:none;">
+        <label>Group name</label>
+        <input type="text" id="gi-rename-input">
+        <button class="btn btn-primary" style="margin-top:8px;" onclick="renameGroup()">Save name</button>
+      </div>
+      <div id="gi-add-field" style="display:none; margin-bottom:14px;">
+        <label style="display:block; font-size:12px; font-weight:500; margin-bottom:5px;">Add member</label>
+        <input type="text" id="gi-add-input" placeholder="Search by name or email…" oninput="searchUsersForAdd(this.value)" style="width:100%; padding:9px 12px; border:1px solid var(--input); background:var(--background); border-radius:calc(var(--radius) - 2px); font-size:13px; outline:none;">
+        <div id="gi-add-results"></div>
+      </div>
+      <div id="gi-members"></div>
+    </div>
+    <div class="modal-footer" id="gi-admin-actions"></div>
+  </div>
+</div>
+
+<!-- ═══ LIGHTBOX ═══ -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <div class="lightbox-close">✕</div>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<!-- ═══ CONTEXT MENU ═══ -->
+<div class="context-menu" id="context-menu"></div>
+
+<!-- ═══ TOASTS ═══ -->
+<div class="toast-stack" id="toast-stack"></div>
+
+<script type="module" src="chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowChat — Messaging, Reimagined</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Source+Serif+4:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/tokens.css">
+<style>
+  body { overflow-x: hidden; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 clamp(20px, 5vw, 56px); height: 64px;
+    background: color-mix(in oklab, var(--background) 78%, transparent);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: 'Source Serif 4', serif;
+    font-size: 19px; font-weight: 600; letter-spacing: -0.3px;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .nav-logo .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--foreground); }
+  .nav-cta { display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13.5px;
+    font-family: 'Inter', sans-serif;
+    transition: .15s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .btn-ghost { color: var(--muted-foreground); }
+  .btn-ghost:hover { color: var(--foreground); background: var(--accent); }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn-primary:hover { opacity: .88; }
+  .btn-outline { border-color: var(--border); color: var(--foreground); }
+  .btn-outline:hover { background: var(--accent); }
+  .btn-lg { padding: 13px 26px; font-size: 14.5px; border-radius: var(--radius); }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    padding: 168px 24px 88px;
+    text-align: center;
+    background-image: radial-gradient(circle at center, transparent 0%, var(--background) 100%);
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted-foreground);
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    margin-bottom: 30px;
+  }
+  .hero-eyebrow .pulse {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--color-green-500);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-green-500) 60%, transparent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-green-500) 45%, transparent); }
+    70%  { box-shadow: 0 0 0 7px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+
+  .hero h1 {
+    font-family: 'Source Serif 4', serif;
+    font-size: clamp(2.6rem, 7vw, 5.4rem);
+    line-height: 1.02;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    max-width: 850px;
+    margin: 0 auto;
+  }
+  .hero h1 em { font-style: italic; color: var(--muted-foreground); font-weight: 500; }
+
+  .hero p {
+    margin: 26px auto 0;
+    max-width: 540px;
+    color: var(--muted-foreground);
+    font-size: 1.06rem;
+    line-height: 1.7;
+  }
+
+  .hero-btns {
+    margin-top: 40px;
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  }
+
+  /* Conversation mock — the signature element */
+  .mock {
+    margin: 72px auto 0;
+    max-width: 480px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 6px);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.06);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mock-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--secondary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12.5px; font-weight: 600;
+  }
+  .mock-name { font-size: 13.5px; font-weight: 600; }
+  .mock-status { font-size: 11.5px; color: var(--muted-foreground); display: flex; align-items: center; gap: 5px; }
+  .mock-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-green-500); }
+  .mock-body { padding: 20px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .bubble {
+    max-width: 75%;
+    padding: 9px 13px;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 13.5px;
+    line-height: 1.45;
+    animation: rise .5s ease both;
+  }
+  .bubble.them { background: var(--secondary); color: var(--secondary-foreground); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .bubble.me   { background: var(--primary); color: var(--primary-foreground); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .bubble:nth-child(1) { animation-delay: .1s; }
+  .bubble:nth-child(2) { animation-delay: .25s; }
+  .bubble:nth-child(3) { animation-delay: .4s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .mock-typing {
+    align-self: flex-start;
+    display: flex; gap: 4px;
+    padding: 10px 13px;
+    background: var(--secondary);
+    border-radius: calc(var(--radius) - 2px);
+    border-bottom-left-radius: 4px;
+  }
+  .mock-typing span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--muted-foreground);
+    animation: bounce 1.2s infinite;
+  }
+  .mock-typing span:nth-child(2) { animation-delay: .15s; }
+  .mock-typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-3px); opacity: 1; } }
+
+  /* ── MARQUEE ── */
+  .marquee {
+    overflow: hidden;
+    padding: 18px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    mask-image: linear-gradient(90deg, transparent, white 12%, white 88%, transparent);
+  }
+  .track {
+    display: flex; gap: 56px; width: max-content;
+    animation: scroll 24s linear infinite;
+    color: var(--muted-foreground);
+    font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* ── FEATURES ── */
+  .features {
+    padding: 120px 24px;
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  .section-eyebrow {
+    text-align: center;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted-foreground);
+    margin-bottom: 18px;
+  }
+  .section-title {
+    text-align: center;
+    font-family: 'Source Serif 4', serif;
+    font-size: clamp(1.8rem, 3.6vw, 2.75rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    margin-bottom: 64px;
+  }
+  .section-title em { font-style: italic; color: var(--muted-foreground); font-weight: 500; }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .feature-card {
+    background: var(--card);
+    padding: 32px 28px;
+    transition: background .15s;
+  }
+  .feature-card:hover { background: var(--accent); }
+  .feature-num {
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--muted-foreground);
+    margin-bottom: 22px;
+  }
+  .feature-title { font-size: 15.5px; font-weight: 600; margin-bottom: 8px; }
+  .feature-desc { font-size: 13px; color: var(--muted-foreground); line-height: 1.7; }
+
+  /* ── CTA STRIP ── */
+  .cta-strip {
+    margin: 0 24px 120px;
+    max-width: 1080px;
+    margin-inline: auto;
+    padding: 56px 40px;
+    border-radius: calc(var(--radius) + 8px);
+    background: linear-gradient(135deg, var(--primary), color-mix(in oklab, var(--primary) 80%, var(--background)));
+    color: var(--primary-foreground);
+    text-align: center;
+  }
+  .cta-strip h2 {
+    font-family: 'Source Serif 4', serif;
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .cta-strip p { opacity: .75; font-size: 14.5px; margin-bottom: 28px; }
+  .cta-strip .btn-primary { background: var(--primary-foreground); color: var(--primary); }
+
+  footer {
+    text-align: center;
+    padding: 36px 24px;
+    color: var(--muted-foreground);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 640px) {
+    .hero { padding-top: 132px; }
+    .features { padding: 88px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><span class="dot"></span>FlowChat</div>
+  <div class="nav-cta">
+    <a href="login.html" class="btn btn-ghost">Log in</a>
+    <a href="login.html#register" class="btn btn-primary">Sign up free</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span class="pulse"></span>Real-time · Secure · Free</div>
+  <h1>Chat that<br><em>actually</em> flows.</h1>
+  <p>Direct messages, group chats, and media sharing — all in one clean, fast app. No noise, just connection.</p>
+  <div class="hero-btns">
+    <a href="login.html#register" class="btn btn-primary btn-lg">Get started free →</a>
+    <a href="login.html" class="btn btn-outline btn-lg">Log in</a>
+  </div>
+
+  <div class="mock">
+    <div class="mock-head">
+      <div class="mock-avatar">AK</div>
+      <div>
+        <div class="mock-name">Ananya K.</div>
+        <div class="mock-status"><span class="dot"></span>Online</div>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="bubble them">hey! are we still on for tomorrow?</div>
+      <div class="bubble me">yep, 10am works 👍</div>
+      <div class="bubble them">perfect, sending the files now</div>
+      <div class="mock-typing"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee">
+  <div class="track">
+    <span>Direct Messages</span><span>Group Chats</span><span>Media Sharing</span>
+    <span>Typing Indicators</span><span>Real-Time</span><span>Open Source</span><span>Secure</span>
+    <span>Direct Messages</span><span>Group Chats</span><span>Media Sharing</span>
+    <span>Typing Indicators</span><span>Real-Time</span><span>Open Source</span><span>Secure</span>
+  </div>
+</div>
+
+<section class="features">
+  <p class="section-eyebrow">Why FlowChat</p>
+  <h2 class="section-title">Everything you need to<br><em>stay connected.</em></h2>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-num">i.</div>
+      <div class="feature-title">Direct messages</div>
+      <div class="feature-desc">One-on-one conversations with real-time delivery, typing indicators, and read receipts.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">ii.</div>
+      <div class="feature-title">Group chats</div>
+      <div class="feature-desc">Create groups, name them, add a photo, and manage members with admin controls.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">iii.</div>
+      <div class="feature-title">Media sharing</div>
+      <div class="feature-desc">Send images, video, audio, and documents up to 100MB with inline previews.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">iv.</div>
+      <div class="feature-title">Reply &amp; edit</div>
+      <div class="feature-desc">Quote any message in a reply, or edit and delete your own messages anytime.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">v.</div>
+      <div class="feature-title">Light &amp; dark mode</div>
+      <div class="feature-desc">A refined light theme by default, with a true dark mode one tap away.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">vi.</div>
+      <div class="feature-title">Private by design</div>
+      <div class="feature-desc">Row-level security on every table means your conversations stay yours.</div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-strip">
+  <h2>Ready to flow?</h2>
+  <p>Free to use. No credit card. Set up in under a minute.</p>
+  <a href="login.html#register" class="btn btn-primary btn-lg">Create your account →</a>
+</section>
+
+<footer>© 2026 FlowChat. Built with Supabase.</footer>
+
+</body>
+</html>
