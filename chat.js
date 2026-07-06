@@ -956,13 +956,23 @@ window.createGroup = async function() {
     .select().single();
   if (error) { toast("Couldn't create group: " + error.message); return; }
 
-  // Creator joins as admin; everyone selected joins as a regular member.
-  const memberRows = [
-    { group_id: group.id, user_id: me.id, is_admin: true },
-    ...groupSelectedUsers.map(u => ({ group_id: group.id, user_id: u.id, is_admin: false }))
-  ];
-  const { error: memErr } = await supabase.from("group_members").insert(memberRows);
-  if (memErr) { toast("Group created but couldn't add members: " + memErr.message); return; }
+  // Creator joins as admin FIRST, in its own insert. This has to be
+  // separate from the members insert below: RLS's is_group_admin()
+  // check can't see rows still being inserted in the same statement,
+  // so if we batch the admin row together with member rows, the
+  // member rows' check ("is the caller already an admin?") evaluates
+  // against a group_members table that doesn't have the admin row
+  // yet — and the whole batch gets rejected.
+  const { error: adminErr } = await supabase.from("group_members").insert({
+    group_id: group.id, user_id: me.id, is_admin: true
+  });
+  if (adminErr) { toast("Group created but couldn't add you as admin: " + adminErr.message); return; }
+
+  if (groupSelectedUsers.length > 0) {
+    const memberRows = groupSelectedUsers.map(u => ({ group_id: group.id, user_id: u.id, is_admin: false }));
+    const { error: memErr } = await supabase.from("group_members").insert(memberRows);
+    if (memErr) { toast("Group created but couldn't add members: " + memErr.message); return; }
+  }
 
   closeModal("new-group-modal");
   await loadChatList();
@@ -1124,11 +1134,3 @@ window.deleteGroup = async function() {
   activeId = null;
   loadChatList();
 };
-
-
-
-
-
-
-
-
